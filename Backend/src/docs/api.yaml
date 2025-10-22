@@ -1,0 +1,266 @@
+openapi: 3.0.0
+info:
+  title: Quiz API
+  version: 1.0.0
+  description: >
+    Այս API-ն նախատեսված է Quiz համակարգի համար, որտեղ կան երկու տեսակի օգտվողներ՝
+    **Admin (ստեղծող)** և **User (լուծող)**։
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local server
+
+paths:
+  /auth/register:
+    post:
+      summary: Register new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: User successfully registered
+
+  /auth/login:
+    post:
+      summary: Login user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful (returns token)
+
+  /quizzes:
+    get:
+      summary: Get all quizzes
+      tags: [Quizzes]
+      responses:
+        "200":
+          description: List of all quizzes
+    post:
+      summary: Create new quiz (admin only)
+      tags: [Quizzes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+      responses:
+        "201":
+          description: Quiz successfully created
+
+  /quizzes/{quizId}:
+    get:
+      summary: Get single quiz by ID
+      tags: [Quizzes]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Quiz data returned
+    put:
+      summary: Update quiz (admin only)
+      tags: [Quizzes]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+      responses:
+        "200":
+          description: Quiz updated
+    delete:
+      summary: Delete quiz (admin only)
+      tags: [Quizzes]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Quiz deleted
+
+  /quizzes/{quizId}/questions:
+    get:
+      summary: Get all questions for a quiz
+      tags: [Questions]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of questions
+    post:
+      summary: Add question to quiz (admin only)
+      tags: [Questions]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                questionText:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    type: string
+                correctAnswer:
+                  type: string
+      responses:
+        "201":
+          description: Question created
+
+  /quizzes/{quizId}/questions/{questionId}:
+    put:
+      summary: Update question (admin only)
+      tags: [Questions]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: questionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                questionText:
+                  type: string
+                options:
+                  type: array
+                  items:
+                    type: string
+                correctAnswer:
+                  type: string
+      responses:
+        "200":
+          description: Question updated
+    delete:
+      summary: Delete question (admin only)
+      tags: [Questions]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: questionId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Question deleted
+
+  /quizzes/{quizId}/submit:
+    post:
+      summary: Submit quiz answers (user)
+      tags: [Results]
+      parameters:
+        - in: path
+          name: quizId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      questionId:
+                        type: string
+                      selectedOption:
+                        type: string
+      responses:
+        "200":
+          description: Quiz result with score returned
+
+  /results/{userId}:
+    get:
+      summary: Get user’s quiz results
+      tags: [Results]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of quiz results for the user
