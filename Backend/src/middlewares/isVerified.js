@@ -1,5 +1,5 @@
 import { User } from '../models/index.js'
-export async function isAuthenticated(req, res, next) {
+export async function isVerified(req, res, next) {
      try {
           const {id} = req.user
           //Check user by ID; if not verified, block access. 

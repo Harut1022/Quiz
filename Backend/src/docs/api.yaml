@@ -1,41 +1,163 @@
 openapi: 3.0.0
 info:
-  title: Quiz API
+  title: Quiz Platform API
   version: 1.0.0
   description: >
-    Այս API-ն նախատեսված է Quiz համակարգի համար, որտեղ կան երկու տեսակի օգտվողներ՝
-    **Admin (ստեղծող)** և **User (լուծող)**։
+    REST API for a quiz platform with three roles:
+    - **Member**: regular user (can view quizzes and update profile)
+    - **Creator**: can create and manage quizzes
+    - **Admin**: full access to manage users and content
 
 servers:
-  - url: http://localhost:5000/api
-    description: Local server
+  - url: http://localhost:4008
+
+
+tags:
+  - name: Auth
+    description: Authentication and account management
+  - name: Member
+    description: User profile and account settings. Can also take quizzes and participate in tests.
+  - name: Creator
+    description: Quiz creation and management
 
 paths:
-  /auth/register:
+  /signup:
     post:
-      summary: Register new user
       tags: [Auth]
+      summary: Register a new user
+      description: Creates a new account with username, and password.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [username, password, repassword]
               properties:
                 username:
                   type: string
-                email:
-                  type: string
                 password:
+                  type: string
+                repassword:
                   type: string
       responses:
         "201":
-          description: User successfully registered
+          description: Registration has been successfully completed.
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value: { status: "error", message: "All fields are required." }
+                usernameIsBusy:
+                  summary: Username is busy
+                  value: {status: "error", message: "Username is busy"}
+                passwordMismatch:
+                  summary: Passwords do not match
+                  value: { status: "error", message: "Passwords do not match." }
+                weakPassword:
+                  summary: Weak password
+                  value: { status: "error", message: "Password does not meet the requirements." }
 
-  /auth/login:
+  /login:
     post:
-      summary: Login user
       tags: [Auth]
+      summary: Login user
+      description: Authenticates a user and returns a JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password ,remember]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                remember:
+                  type: boolean
+      responses:
+        "200":
+          description: `{ status: string, message?: string, token: string }`
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value: { status: "error", message: "All fields are required." }
+                usernameOrPassword:
+                  summary: Incorrect username or password.
+                  value: { status: "error", message: "Incorrect username or password." }
+
+  /profile:
+    get:
+      tags: [Auth]
+      summary: Get user profile information
+      description: Returns the authenticated user's profile data.
+      security:
+        - bearerAuth: []   # JWT auth (Authorization header)
+      responses:
+        "200":
+          description: Successfully retrieved user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: string
+                    example: 671b5b8dcf9a2d0012f4fbc9
+                  username:
+                    type: string
+                    example: johndoe
+                  email:
+                    type: string
+                    example: johndoe@example.com
+                  name:
+                    type: string
+                    example: John
+                  surname:
+                    type: string
+                    example: Doe
+                  phone:
+                    type: string
+                    example: "+37495306596"
+                  avatar:
+                    type: string
+                    example: "https://example.com/uploads/avatar.jpg"
+                  isVerified:
+                    type: boolean
+                    example: true
+                  role:
+                    type: string
+                    example: member
+        "401":
+          description: Unauthorized – Missing or invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Unauthorized – invalid or expired token
+
+  /profile/verify:
+    post:
+      summary: Send account verification email
+      description: Sends a verification link to the user's email address.
+      tags: [Auth]
+      security:
+        - bearerAuth: []   # եթե պահանջում է մուտք գործած user-ի token
       requestBody:
         required: true
         content:
@@ -45,222 +167,400 @@ paths:
               properties:
                 email:
                   type: string
-                password:
-                  type: string
+                  format: email
+                  example: johndoe@example.com
+              required:
+                - email
       responses:
         "200":
-          description: Login successful (returns token)
+          description: Verification email successfully sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Verification email has been sent to your inbox.
+        "400":
+          description: Invalid or missing email address
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Please provide a valid email address.
+        "409":
+          description: User already verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: This account has already been verified.
+        "500":
+          description: Server error – email could not be sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Failed to send verification email. Please try again later.
 
-  /quizzes:
-    get:
-      summary: Get all quizzes
-      tags: [Quizzes]
-      responses:
-        "200":
-          description: List of all quizzes
-    post:
-      summary: Create new quiz (admin only)
-      tags: [Quizzes]
+  /profile/update:
+    put:
+      summary: Update user profile information
+      description: Allows an authenticated user to update their personal information (name, surname, and phone number).
+      tags: [Auth]
+      security:
+        - bearerAuth: []   # JWT auth required
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - surname
+                - phone
+              properties:
+                name:
+                  type: string
+                  example: John
+                surname:
+                  type: string
+                  example: Doe
+                phone:
+                  type: string
+                  description: Must be a valid phone number
+                  example: "+37495306596"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Profile updated successfully.
+                  payload:
+                    type: string
+                    example: User information updated in the database.
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              examples:
+                missingFields:
+                  summary: Missing required fields
+                  value:
+                    status: error
+                    message: Fields are required.
+                invalidPhone:
+                  summary: Invalid phone number
+                  value:
+                    status: error
+                    message: Phone number is not valid.
+                noChanges:
+                  summary: No changes made
+                  value:
+                    status: error
+                    message: No changes were made.
+        "401":
+          description: Unauthorized – User is not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Unauthorized – invalid or expired token
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Internal server error. Please try again later.
+
+  /profile/avatar:
+    post:
+      summary: Upload or update profile avatar
+      description: >
+        Uploads a new avatar image for the authenticated user.
+        The file should be sent as `multipart/form-data` with the key `picture`.
+      tags: [Auth]
+      security:
+        - bearerAuth: []   # JWT token required
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                picture:
+                  type: File
+                  description: Image file to upload as avatar
+      responses:
+        "200":
+          description: Avatar uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Avatar path saved in user profile
+                  payload:
+                    type: string
+                    example: /public/uploads/avatar123.png
+        "400":
+          description: Invalid file or missing picture field
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: File upload failed or picture not provided
+        "401":
+          description: Unauthorized – User not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Unauthorized – invalid or expired token
+        "500":
+          description: Server error – failed to save avatar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Failed to upload or save avatar. Please try again later.
+
+
+  /quiz/add:
+    post:
+      summary: Create a new quiz
+      description: Creates a new quiz with title, description, category, and an optional image file.
+      tags: [Creator]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - category
               properties:
                 title:
                   type: string
+                  description: Title of the quiz
+                  example: "JavaScript Fundamentals"
                 description:
                   type: string
+                  description: Short description of the quiz
+                  example: "Test your knowledge of JS basics."
                 category:
                   type: string
-      responses:
-        "201":
-          description: Quiz successfully created
-
-  /quizzes/{quizId}:
-    get:
-      summary: Get single quiz by ID
-      tags: [Quizzes]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Quiz data returned
-    put:
-      summary: Update quiz (admin only)
-      tags: [Quizzes]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
+                  description: Category of the quiz
+                  example: "Programming"
+                image:
                   type: string
-                description:
-                  type: string
-                category:
-                  type: string
-      responses:
-        "200":
-          description: Quiz updated
-    delete:
-      summary: Delete quiz (admin only)
-      tags: [Quizzes]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Quiz deleted
-
-  /quizzes/{quizId}/questions:
-    get:
-      summary: Get all questions for a quiz
-      tags: [Questions]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: List of questions
-    post:
-      summary: Add question to quiz (admin only)
-      tags: [Questions]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                questionText:
-                  type: string
-                options:
+                  format: binary
+                  description: Optional image file for the quiz (uploaded as multipart form data)
+                isShuffle:
+                  type: boolean
+                  description: Whether to shuffle questions
+                  default: false
+                  example: false
+                passingPercent:
+                  type: number
+                  description: Minimum percentage to pass
+                  default: 60
+                  example: 60
+                hashtags:
                   type: array
                   items:
                     type: string
-                correctAnswer:
-                  type: string
-      responses:
-        "201":
-          description: Question created
-
-  /quizzes/{quizId}/questions/{questionId}:
-    put:
-      summary: Update question (admin only)
-      tags: [Questions]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: questionId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                questionText:
-                  type: string
-                options:
+                  description: List of hashtags
+                  example: ["javascript", "frontend"]
+                questions:
                   type: array
                   items:
                     type: string
-                correctAnswer:
-                  type: string
-      responses:
-        "200":
-          description: Question updated
-    delete:
-      summary: Delete question (admin only)
-      tags: [Questions]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: questionId
-          required: true
-          schema:
-            type: string
-      responses:
-        "204":
-          description: Question deleted
-
-  /quizzes/{quizId}/submit:
-    post:
-      summary: Submit quiz answers (user)
-      tags: [Results]
-      parameters:
-        - in: path
-          name: quizId
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                answers:
+                  description: List of question IDs or titles
+                  example: []
+                questionCounts:
                   type: array
                   items:
+                    type: number
+                  description: Available question count options that the user can choose for this quiz
+                  example: [20,50,100]
+                isPublished:
+                  type: boolean
+                  description: Whether the quiz is published
+                  default: false
+                  example: false
+                difficulty:
+                  type: string
+                  description: Difficulty level
+                  enum: [easy, medium, hard]
+                  default: easy
+                  example: easy
+      responses:
+        "201":
+          description: Quiz created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz created successfully
+                  quiz:
                     type: object
-                    properties:
-                      questionId:
-                        type: string
-                      selectedOption:
-                        type: string
-      responses:
-        "200":
-          description: Quiz result with score returned
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Please fill in all required fields correctly
 
-  /results/{userId}:
-    get:
-      summary: Get user’s quiz results
-      tags: [Results]
+
+  /quiz/hashtag/add/{id}:
+    put:
+      summary: Add a new hashtag to a quiz
+      description: Allows a creator to add a hashtag string to the quiz's hashtag list.
+      tags: [Creator]
+      security:
+        - bearerAuth: []  # JWT authentication if required
       parameters:
-        - in: path
-          name: userId
+        - name: id
+          in: path
           required: true
+          description: The ID of the quiz to update
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hashtag
+              properties:
+                hashtag:
+                  type: string
+                  example: "javascript"
       responses:
         "200":
-          description: List of quiz results for the user
+          description: Hashtag added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Hashtag added successfully
+                  post:
+                    type: object
+                    description: Updated quiz object with new hashtag
+        "404":
+          description: Quiz not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+
+
+
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
