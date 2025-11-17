@@ -7,7 +7,7 @@ const quizSchema = new Schema({
     category:{type:String},
     difficulty: {type:String,required: [true,"Difficulty level is required"]}, //level
     authorId:{type: Types.ObjectId, ref: "User", required: true},
-    isShuffle: { type: Boolean, default: false },
+    isShuffle: { type: Boolean, default: true },
     passingPercent: {type: Number,required: true ,min: 0,max: 100,default: 60 },
     hashtags: [{type:String}],
     questions:[{type: Types.ObjectId, ref:"Question"}],

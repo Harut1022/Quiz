@@ -5,6 +5,7 @@ import { quizRouter } from './src/routes/quiz.js'
 import { connectDb, disconnectDb } from './src/config/db.js'
 import { setupSwagger } from './src/helpers/swagger.js';
 import { questionRouter } from './src/routes/question.js'
+import { passRouter } from './src/routes/pass.js'
 
 
 const app = express()
@@ -14,11 +15,13 @@ app.use(express.json())
 
 
 app.use("/",userRouter)
-app.use("/quiz",quizRouter)
 app.use("/quiz/question",questionRouter)
+app.use("/quiz",quizRouter)
+app.use("/pass",passRouter)
 
 
-app.listen(env.port,()=>{
+const HOST = "0.0.0.0"; // սա թույլ տալիս է ընդունել բոլալ IP-ներից
+app.listen(env.port,HOST,()=>{
     console.log(`${env.url}:${env.port}`)
     connectDb()
     console.log("Mongo Connected!")

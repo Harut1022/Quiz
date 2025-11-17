@@ -8,11 +8,13 @@ import { checkRole } from "../middlewares/checkRole.js"
 
 export const quizRouter = express.Router()
 quizRouter.use(isAuthenticated)
+quizRouter.use(checkRole("creator","admin"))
 
-
-// Ավելացնենք quiz 
-quizRouter.post("/add",checkRole("creator","admin"), quiz.createQuiz)
-quizRouter.patch("/edit/:id", checkRole("creator","admin"),quiz.editQuiz)
-quizRouter.put("/hashtag/add/:id",checkRole("creator","admin"),quiz.addHashtag)
+quizRouter.get("/all",quiz.getAll)
+quizRouter.post("/add", quiz.createQuiz)
+quizRouter.patch("/edit/:id",quiz.editQuiz)
+quizRouter.put("/hashtag/add/:id",quiz.addHashtag)
+quizRouter.get("/:id",quiz.getById)
+quizRouter.put("/:id/toggle-publish",quiz.togglePublish)
 
 

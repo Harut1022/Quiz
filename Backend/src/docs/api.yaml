@@ -21,6 +21,7 @@ tags:
     description: Quiz creation and management
 
 paths:
+# Auth
   /signup:
     post:
       tags: [Auth]
@@ -393,14 +394,179 @@ paths:
                     type: string
                     example: Failed to upload or save avatar. Please try again later.
 
+# Member 
 
+  /quizzes/{id}/quotes:
+    get:
+      summary: Retrieve available question count options for a quiz
+      description: Returns the `questionCounts` array for a specific quiz.  
+        This indicates how many questions can be selected when taking the quiz.
+      tags: [Member]
+      security:
+        - bearerAuth: []   # JWT authentication required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Quiz ID
+          schema:
+            type: string
+            example: "67373f9d21f91e23b2a5f1ad"
+      responses:
+        "200":
+          description: Quiz question count retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz question count retrieved successfully.
+                  questionCounts:
+                    type: object
+                    description: Quiz object containing available question count options
+                    properties:
+                      _id:
+                        type: string
+                        example: "67373f9d21f91e23b2a5f1ad"
+                      questionCounts:
+                        type: array
+                        items:
+                          type: integer
+                        example: [5, 10, 15]
+        "404":
+          description: Quiz not found or access denied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found or access denied.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error. Please try again later.
+
+  /quizzes/{id}:
+    get:
+      summary: Retrieve a quiz with random questions
+      description: Fetches a quiz by ID and returns a random subset of its questions. The number of questions is specified in the request body.
+      tags: [Member]
+      security:
+        - bearerAuth: []   # JWT authentication required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Quiz ID
+          schema:
+            type: string
+            example: "67373f9d21f91e23b2a5f1ad"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quotes
+              properties:
+                quotes:
+                  type: integer
+                  description: Number of random questions to include
+                  example: 5
+      responses:
+        "200":
+          description: Quiz retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz retrieved successfully.
+                  quiz:
+                    type: object
+                    description: Quiz object with randomly selected questions
+                    properties:
+                      _id:
+                        type: string
+                        example: "67373f9d21f91e23b2a5f1ad"
+                      title:
+                        type: string
+                        example: "JavaScript Fundamentals"
+                      questions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "67373f9d21f91e23b2a5f1bd"
+                            text:
+                              type: string
+                              example: "What is a closure in JavaScript?"
+                            picture:
+                              type: string
+                              example: "public/uploads/questions/1731594223451example.png"
+        "400":
+          description: Invalid input or ID format
+          content:
+            application/json:
+              examples:
+                invalidId:
+                  summary: Invalid quiz ID format
+                  value:
+                    message: Invalid quiz ID format.
+                invalidQuotes:
+                  summary: Invalid question count value
+                  value:
+                    message: Invalid question count value.
+        "404":
+          description: Quiz not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error. Please try again later.
+
+
+
+
+# Creator
   /quiz/add:
     post:
       summary: Create a new quiz
-      description: Creates a new quiz with title, description, category, and an optional image file.
+      description: >
+        Creates a new quiz in the database.  
+        Requires authentication and accepts **multipart/form-data** (with an image file).  
+        Returns the created quiz information or its ID.
       tags: [Creator]
       security:
-        - bearerAuth: []
+        - bearerAuth: []   # JWT auth middleware required
       requestBody:
         required: true
         content:
@@ -414,59 +580,52 @@ paths:
               properties:
                 title:
                   type: string
-                  description: Title of the quiz
-                  example: "JavaScript Fundamentals"
+                  description: Quiz title
+                  example: JavaScript Basics
                 description:
                   type: string
-                  description: Short description of the quiz
-                  example: "Test your knowledge of JS basics."
+                  description: Short summary about the quiz
+                  example: A beginner-level quiz to test basic JavaScript knowledge.
                 category:
                   type: string
-                  description: Category of the quiz
-                  example: "Programming"
+                  description: Category or topic name
+                  example: Programming
                 image:
                   type: string
                   format: binary
-                  description: Optional image file for the quiz (uploaded as multipart form data)
+                  description: Upload quiz image (optional)
                 isShuffle:
                   type: boolean
-                  description: Whether to shuffle questions
-                  default: false
-                  example: false
+                  description: Whether to shuffle question order
+                  example: true
                 passingPercent:
                   type: number
-                  description: Minimum percentage to pass
-                  default: 60
-                  example: 60
+                  description: Minimum percent required to pass
+                  example: 70
                 hashtags:
                   type: array
+                  description: Hashtags related to the quiz
                   items:
                     type: string
-                  description: List of hashtags
-                  example: ["javascript", "frontend"]
+                  example: ["#javascript", "#frontend", "#quiz"]
                 questions:
                   type: array
+                  description: List of question IDs or question objects
                   items:
                     type: string
-                  description: List of question IDs or titles
-                  example: []
-                questionCounts:
-                  type: array
-                  items:
-                    type: number
-                  description: Available question count options that the user can choose for this quiz
-                  example: [20,50,100]
+                  example: ["653a9f5f9c0f912b2e4ab123", "653a9f6d1c9b2f7c1e5cd456"]
                 isPublished:
                   type: boolean
-                  description: Whether the quiz is published
-                  default: false
+                  description: Whether the quiz is visible to users
                   example: false
                 difficulty:
                   type: string
-                  description: Difficulty level
-                  enum: [easy, medium, hard]
-                  default: easy
-                  example: easy
+                  description: Difficulty level (e.g., easy, medium, hard)
+                  example: medium
+                questionCounts:
+                  type: number
+                  description: Total number of questions in the quiz
+                  example: 10
       responses:
         "201":
           description: Quiz created successfully
@@ -475,13 +634,15 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
+                  ok:
+                    type: boolean
+                    example: true
+                  quizId:
                     type: string
-                    example: Quiz created successfully
-                  quiz:
-                    type: object
+                    description: full object of created quiz
+                    example: IQuiz
         "400":
-          description: Invalid input data
+          description: Missing or invalid required fields
           content:
             application/json:
               schema:
@@ -489,8 +650,484 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Please fill in all required fields correctly
+                    example: Please fill in all required fields correctly.
+        "500":
+          description: Server or validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
 
+  /quiz/edit/{id}:
+    put:
+      summary: Update an existing quiz
+      description: >
+        Updates an existing quiz by its ID.  
+        Accepts **multipart/form-data** to optionally upload a new image.  
+        Requires authentication and author permissions.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT auth middleware required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the quiz to update
+          schema:
+            type: string
+            example: 6542a3c6e2a2cf9c5d3a7810
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - category
+              properties:
+                title:
+                  type: string
+                  description: Quiz title
+                  example: Advanced JavaScript Concepts
+                description:
+                  type: string
+                  description: Detailed description of the quiz content
+                  example: An advanced-level quiz to test your deep knowledge of JS.
+                category:
+                  type: string
+                  description: Quiz category or topic
+                  example: Programming
+                image:
+                  type: string
+                  format: binary
+                  description: Optional new quiz image to replace existing one
+                isShuffle:
+                  type: boolean
+                  description: Shuffle questions randomly
+                  example: false
+                passingPercent:
+                  type: number
+                  description: Minimum passing score in percent
+                  example: 80
+                hashtags:
+                  type: array
+                  items:
+                    type: string
+                  description: Hashtags for quiz tagging
+                  example: ["#advanced", "#javascript", "#backend"]
+                questions:
+                  type: array
+                  description: List of question IDs or objects
+                  items:
+                    type: string
+                  example: ["653a9f5f9c0f912b2e4ab123", "653a9f6d1c9b2f7c1e5cd456"]
+                isPublished:
+                  type: boolean
+                  description: Whether quiz is published or draft
+                  example: true
+                difficulty:
+                  type: string
+                  description: Difficulty level (easy, medium, hard)
+                  example: hard
+                questionCounts:
+                  type: number
+                  description: Total number of questions in quiz
+                  example: 15
+      responses:
+        "200":
+          description: Quiz updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        "400":
+          description: Invalid input or nothing to update
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Nothing to update
+        "401":
+          description: Unauthorized (no or invalid JWT)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Unauthorized
+        "500":
+          description: Internal server or validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
+
+  /quiz/{id}/toggle-publish:
+    put:
+      summary: Toggle quiz publish status
+      description: >
+        Toggles the `isPublished` status of a quiz (true ↔ false).  
+        Only the author of the quiz can perform this action.  
+        Requires authentication with a valid JWT token.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT authentication required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Quiz ID to toggle publish status
+          schema:
+            type: string
+            example: 6542a3c6e2a2cf9c5d3a7810
+      responses:
+        "200":
+          description: Quiz publish status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Quiz published successfully.
+                  isPublished:
+                    type: boolean
+                    example: true
+        "404":
+          description: Quiz not found or doesn't belong to user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found.
+        "401":
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Unauthorized.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
+
+  /quiz/all:
+    get:
+      summary: Get all quizzes created by the authenticated user
+      description: >
+        Returns all quizzes created by the currently authenticated user.  
+        Includes the total count of quizzes in the response.  
+        Requires JWT authentication.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT auth middleware required
+      responses:
+        "200":
+          description: Quizzes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: All quizzes created by this user.
+                  count:
+                    type: number
+                    description: Total number of quizzes found
+                    example: 3
+                  quizes:
+                    type: array
+                    description: Array of quizzes belonging to the authenticated user
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                          example: 6542a3c6e2a2cf9c5d3a7810
+                        title:
+                          type: string
+                          example: JavaScript Basics
+                        description:
+                          type: string
+                          example: A quiz for beginners to test JS fundamentals.
+                        category:
+                          type: string
+                          example: Programming
+                        image:
+                          type: string
+                          example: uploads/quizzes/1730418459example.png
+                        authorId:
+                          type: string
+                          example: 652f812ea6f9f2b3c97f8a12
+                        isShuffle:
+                          type: boolean
+                          example: true
+                        passingPercent:
+                          type: number
+                          example: 70
+                        hashtags:
+                          type: array
+                          items:
+                            type: string
+                          example: ["#javascript", "#frontend"]
+                        questions:
+                          type: array
+                          description: Array of question objects (if populated)
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                                example: 69035c6e023d0e5e3aab69c3
+                              title:
+                                type: string
+                                example: What is a closure in JavaScript?
+                              type:
+                                type: string
+                                example: single
+                              point:
+                                type: number
+                                example: 1
+                        isPublished:
+                          type: boolean
+                          example: false
+                        difficulty:
+                          type: string
+                          example: easy
+                        questionCounts:
+                          type: number
+                          example: 10
+                        createdAt:
+                          type: string
+                          format: date-time
+                          example: 2025-10-30T12:45:23.000Z
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          example: 2025-10-30T12:50:10.000Z
+        "404":
+          description: No quizzes found for this user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: No quizzes found for this user.
+                  data:
+                    type: array
+                    example: []
+        "401":
+          description: Unauthorized access (missing or invalid JWT)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Unauthorized.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
+
+  /quiz/{id}:
+    get:
+      summary: Get quiz by ID
+      description: >
+        Returns a specific quiz by its ID **only if it belongs to the authenticated user**.  
+        Includes the full list of question objects (not just IDs).  
+        Requires JWT authentication.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT auth middleware required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique ID of the quiz to retrieve
+          schema:
+            type: string
+            example: 6542a3c6e2a2cf9c5d3a7810
+      responses:
+        "200":
+          description: Quiz found successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz found successfully.
+                  data:
+                    type: object
+                    description: Full quiz object with embedded questions
+                    properties:
+                      _id:
+                        type: string
+                        example: 6542a3c6e2a2cf9c5d3a7810
+                      title:
+                        type: string
+                        example: JavaScript Basics
+                      description:
+                        type: string
+                        example: A beginner-level quiz for JavaScript learners.
+                      category:
+                        type: string
+                        example: Programming
+                      image:
+                        type: string
+                        example: uploads/quizzes/1730418459example.png
+                      authorId:
+                        type: string
+                        example: 652f812ea6f9f2b3c97f8a12
+                      isShuffle:
+                        type: boolean
+                        example: true
+                      passingPercent:
+                        type: number
+                        example: 70
+                      hashtags:
+                        type: array
+                        items:
+                          type: string
+                        example: ["#javascript", "#frontend"]
+                      questions:
+                        type: array
+                        description: List of question objects belonging to the quiz
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: 69035c6e023d0e5e3aab69c3
+                            title:
+                              type: string
+                              example: Hello
+                            image:
+                              type: string
+                              example: public/uploads/quizzes/17618279508618edcb32c-dd36-4916-8fb4-fda000afad0d2903252.png
+                            answers:
+                              type: array
+                              description: List of answers for this question
+                              items:
+                                type: object
+                                properties:
+                                  _id:
+                                    type: string
+                                    example: 69035c7f023d0e5e3aab69c4
+                                  text:
+                                    type: string
+                                    example: JavaScript
+                                  isCorrect:
+                                    type: boolean
+                                    example: true
+                            type:
+                              type: string
+                              description: Question type (e.g., single, multiple)
+                              example: single
+                            quizId:
+                              type: string
+                              example: 6903206815f4c2514d33d5eb
+                            isShuffle:
+                              type: boolean
+                              example: true
+                            point:
+                              type: number
+                              example: 1
+                      isPublished:
+                        type: boolean
+                        example: false
+                      difficulty:
+                        type: string
+                        example: easy
+                      questionCounts:
+                        type: number
+                        example: 10
+                      createdAt:
+                        type: string
+                        format: date-time
+                        example: 2025-10-30T12:45:23.000Z
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: 2025-10-30T12:50:10.000Z
+        "404":
+          description: Quiz not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found.
+        "401":
+          description: Unauthorized access (missing or invalid JWT)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Unauthorized.
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
 
   /quiz/hashtag/add/{id}:
     put:
@@ -553,9 +1190,720 @@ paths:
                     type: string
                     example: Internal Server Error
 
+  /quiz/question/add/{id}:
+    post:
+      summary: Add a new question to a quiz
+      description: Creates a new question and attaches it to the specified quiz. The endpoint also supports uploading an optional image and adding predefined answers.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # Requires JWT authentication
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The ID of the quiz to which the question will be added.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  description: Question title or text.
+                  example: "What is the capital of France?"
+                image:
+                  type: string
+                  format: binary
+                  description: Optional image file for the question.
+                answers:
+                  type: array
+                  description: List of possible answers for this question.
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                        example: "Paris"
+                      isCorrect:
+                        type: boolean
+                        example: true
+                type:
+                  type: string
+                  enum: [single, multiple]
+                  example: "single"
+                  description: Defines whether the question allows one or multiple correct answers.
+                isShuffle:
+                  type: boolean
+                  example: true
+                  description: Indicates whether answers should be displayed in random order.
+                point:
+                  type: number
+                  example: 5
+                  description: Number of points awarded for a correct answer.
+      responses:
+        "200":
+          description: Question added successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Question added successfully.
+                  quiz:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: "674ac82b6f2d9d06e9a5b32e"
+                      title:
+                        type: string
+                        example: "Geography Quiz"
+                      isPublished:
+                        type: boolean
+                        example: true
+                      authorId:
+                        type: string
+                        example: "674ac82b6f2d9d06e9a5b32f"
+                      questions:
+                        type: array
+                        description: List of questions in this quiz.
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "674ac8b56f2d9d06e9a5b332"
+                            title:
+                              type: string
+                              example: "What is the capital of France?"
+                            image:
+                              type: string
+                              example: "uploads/questions/674ac8b56.png"
+                            type:
+                              type: string
+                              enum: [single, multiple]
+                              example: "single"
+                            point:
+                              type: number
+                              example: 5
+                            isShuffle:
+                              type: boolean
+                              example: true
+                            answers:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  text:
+                                    type: string
+                                    example: "Paris"
+                                  isCorrect:
+                                    type: boolean
+                                    example: true
+              example:
+                message: "Question added successfully."
+                quiz:
+                  _id: "674ac82b6f2d9d06e9a5b32e"
+                  title: "Geography Quiz"
+                  isPublished: true
+                  authorId: "674ac82b6f2d9d06e9a5b32f"
+                  questions:
+                    - _id: "674ac8b56f2d9d06e9a5b332"
+                      title: "What is the capital of France?"
+                      image: "uploads/questions/674ac8b56.png"
+                      type: "single"
+                      point: 5
+                      isShuffle: true
+                      answers:
+                        - text: "Paris"
+                          isCorrect: true
+                        - text: "London"
+                          isCorrect: false
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              example:
+                message: "Title field required"
+        "404":
+          description: Quiz not found
+          content:
+            application/json:
+              example:
+                message: "Quiz not found."
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                message: "Internal server error."
 
+  /quiz/question/edit/{id}:
+    put:
+      summary: Edit an existing question
+      description: Updates a question's details including title, image, answers, type, shuffle status, and points.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # Requires JWT authentication
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the question to edit.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - quizId
+              properties:
+                title:
+                  type: string
+                  description: Updated question title or text.
+                  example: "What is the capital of Germany?"
+                quizId:
+                  type: string
+                  description: The ID of the quiz the question belongs to.
+                  example: "674ac82b6f2d9d06e9a5b32e"
+                image:
+                  type: string
+                  format: binary
+                  description: Optional new image file for the question.
+                answers:
+                  type: array
+                  description: Updated list of possible answers for this question.
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                        example: "Berlin"
+                      isCorrect:
+                        type: boolean
+                        example: true
+                type:
+                  type: string
+                  enum: [single, multiple]
+                  example: "single"
+                  description: Defines whether the question allows one or multiple correct answers.
+                isShuffle:
+                  type: boolean
+                  example: false
+                  description: Indicates whether answers should be displayed in random order.
+                point:
+                  type: number
+                  example: 10
+                  description: Number of points awarded for a correct answer.
+      responses:
+        "200":
+          description: Question updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Question updated successfully.
+                  Question:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: "674ac8b56f2d9d06e9a5b332"
+                      title:
+                        type: string
+                        example: "What is the capital of Germany?"
+                      image:
+                        type: string
+                        example: "uploads/questions/674ac8b56.png"
+                      type:
+                        type: string
+                        enum: [single, multiple]
+                        example: "single"
+                      isShuffle:
+                        type: boolean
+                        example: false
+                      point:
+                        type: number
+                        example: 10
+                      answers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            text:
+                              type: string
+                              example: "Berlin"
+                            isCorrect:
+                              type: boolean
+                              example: true
+                            _id:
+                              type: string
+                              example: "674ac8b56f2d9d06e9a5b333"
+              example:
+                message: "Question updated successfully."
+                Question:
+                  _id: "674ac8b56f2d9d06e9a5b332"
+                  title: "What is the capital of Germany?"
+                  image: "uploads/questions/674ac8b56.png"
+                  type: "single"
+                  isShuffle: false
+                  point: 10
+                  answers:
+                    - text: "Berlin"
+                      isCorrect: true
+                    - text: "Munich"
+                      isCorrect: false
+        "400":
+          description: Invalid or missing fields.
+          content:
+            application/json:
+              examples:
+                MissingFields:
+                  summary: Missing required title or quizId
+                  value:
+                    message: "Title and quizId field required"
+                NotFound:
+                  summary: Question not found or invalid quiz
+                  value:
+                    message: "Question not found or does not belong to the specified quiz."
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                message: "Internal server error."
 
+  /quiz/question/delete/{id}:
+    delete:
+      summary: Delete a question from a quiz
+      description: Deletes a specific question by its ID and removes it from the associated quiz. Only the quiz author can perform this action.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # Requires JWT authentication
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the question to be deleted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quizId
+              properties:
+                quizId:
+                  type: string
+                  description: The ID of the quiz that contains the question.
+                  example: "674ac82b6f2d9d06e9a5b32e"
+      responses:
+        "200":
+          description: Question deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Question deleted successfully.
+              example:
+                success: true
+                message: "Question deleted successfully."
+        "400":
+          description: Missing or invalid request fields.
+          content:
+            application/json:
+              examples:
+                MissingFields:
+                  summary: Required fields are missing.
+                  value:
+                    message: "Both quizId and questionId are required."
+                InvalidRequest:
+                  summary: Invalid data format.
+                  value:
+                    message: "Invalid request payload."
+        "404":
+          description: Question or quiz not found.
+          content:
+            application/json:
+              examples:
+                QuestionNotFound:
+                  summary: Question not found in the specified quiz.
+                  value:
+                    message: "Question not found in the specified quiz."
+                QuizNotFound:
+                  summary: Quiz not found or user not authorized.
+                  value:
+                    message: "Quiz not found or you do not have permission to modify it."
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              example:
+                message: "An unexpected error occurred while deleting the question."
 
+  /quiz/question/answer/add/{id}:
+    post:
+      summary: Add an answer to a specific question
+      description: Allows the quiz author to add a new answer (text or image) to a question.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT authentication required
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Question ID
+          schema:
+            type: string
+            example: "671a1bce4e29cfe123456789"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - quizId
+                - text
+              properties:
+                quizId:
+                  type: string
+                  example: "671a1ac44e29cfe123456789"
+                text:
+                  type: string
+                  description: The answer text.
+                  example: "JavaScript is a programming language."
+                isCorrect:
+                  type: boolean
+                  description: Whether the answer is correct (true/false).
+                  example: true
+                file:
+                  type: string
+                  format: binary
+                  description: Optional image for the answer.
+      responses:
+        "201":
+          description: Answer added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Answer added successfully.
+                  question:
+                    type: object
+                    description: The updated question with the newly added answer.
+                    properties:
+                      _id:
+                        type: string
+                        example: "671a1bce4e29cfe123456789"
+                      title:
+                        type: string
+                        example: "What is JavaScript?"
+                      type:
+                        type: string
+                        enum: [single, multiple]
+                        example: single
+                      difficulty:
+                        type: string
+                        example: "medium"
+                      quizId:
+                        type: string
+                        example: "671a1ac44e29cfe123456789"
+                      answers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "671a1bd54e29cfe123456999"
+                            text:
+                              type: string
+                              example: "JavaScript is a scripting language for the web."
+                            isCorrect:
+                              type: boolean
+                              example: true
+                            picture:
+                              type: string
+                              example: "public/uploads/quizzes/1698779123456example.png"
+        "400":
+          description: Invalid or missing input
+          content:
+            application/json:
+              examples:
+                missingText:
+                  summary: Missing answer text
+                  value:
+                    message: Answer text or image is required.
+        "404":
+          description: Question not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Question not found or quizId is invalid.
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error. Please try again later.
+
+  /quiz/question/answer/edit/{id}:
+    patch:
+      summary: Edit an existing answer
+      description: Updates the text, correctness, or image of a specific answer inside a question. Only the quiz author can perform this action.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # Requires JWT authentication
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the answer to edit.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - questionId
+                - quizId
+              properties:
+                text:
+                  type: string
+                  description: The updated answer text.
+                  example: "Paris"
+                isCorrect:
+                  type: boolean
+                  description: Whether the answer is correct or not.
+                  example: true
+                questionId:
+                  type: string
+                  description: The ID of the question that contains this answer.
+                  example: "674ac8b56f2d9d06e9a5b332"
+                quizId:
+                  type: string
+                  description: The ID of the quiz that contains the question.
+                  example: "674ac82b6f2d9d06e9a5b32e"
+                answerImage:
+                  type: string
+                  format: binary
+                  description: Optional image file for the answer.
+      responses:
+        "200":
+          description: Answer updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Answer updated successfully.
+                  question:
+                    type: object
+                    description: The updated question object.
+                    properties:
+                      _id:
+                        type: string
+                        example: "674ac8b56f2d9d06e9a5b332"
+                      title:
+                        type: string
+                        example: "What is the capital of France?"
+                      quizId:
+                        type: string
+                        example: "674ac82b6f2d9d06e9a5b32e"
+                      answers:
+                        type: array
+                        description: Updated list of answers for the question.
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "674ac9a76f2d9d06e9a5b334"
+                            text:
+                              type: string
+                              example: "Paris"
+                            isCorrect:
+                              type: boolean
+                              example: true
+                            picture:
+                              type: string
+                              example: "uploads/answers/674ac9a76f2d9d06e9a5b334.png"
+              example:
+                message: "Answer updated successfully."
+                question:
+                  _id: "674ac8b56f2d9d06e9a5b332"
+                  title: "What is the capital of France?"
+                  quizId: "674ac82b6f2d9d06e9a5b32e"
+                  answers:
+                    - _id: "674ac9a76f2d9d06e9a5b334"
+                      text: "Paris"
+                      isCorrect: true
+                      picture: "uploads/answers/674ac9a76f2d9d06e9a5b334.png"
+                    - _id: "674ac9a76f2d9d06e9a5b335"
+                      text: "London"
+                      isCorrect: false
+        "400":
+          description: Missing or invalid fields.
+          content:
+            application/json:
+              example:
+                message: "Answer text or image is required."
+        "404":
+          description: Answer not found.
+          content:
+            application/json:
+              example:
+                message: "The specified answer was not found."
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              example:
+                message: "An unexpected error occurred while updating the answer."
+
+  /quiz/question/answer/delete/{id}:
+    delete:
+      summary: Delete an existing answer from a question
+      description: Removes an answer by its ID from a specific question inside a quiz. Only the quiz author is allowed to delete answers.
+      tags: [Creator]
+      security:
+        - bearerAuth: []   # JWT Authentication required
+        
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The ID of the answer to be deleted.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quizId
+                - questionId
+              properties:
+                quizId:
+                  type: string
+                  description: ID of the quiz containing the question.
+                  example: "674ac82b6f2d9d06e9a5b32e"
+                questionId:
+                  type: string
+                  description: ID of the question containing the answer.
+                  example: "674ac8b56f2d9d06e9a5b332"
+
+      responses:
+        "200":
+          description: Answer deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: This Answer deleted successfully.
+                  question:
+                    type: object
+                    description: Updated question object after deleting the answer.
+                    properties:
+                      _id:
+                        type: string
+                        example: "674ac8b56f2d9d06e9a5b332"
+                      title:
+                        type: string
+                        example: "What is the capital of France?"
+                      quizId:
+                        type: string
+                        example: "674ac82b6f2d9d06e9a5b32e"
+                      answers:
+                        type: array
+                        description: Remaining answers in the question.
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: "674ac9a76f2d9d06e9a5b335"
+                            text:
+                              type: string
+                              example: "London"
+                            isCorrect:
+                              type: boolean
+                              example: false
+                            picture:
+                              type: string
+                              example: "uploads/answers/answer-image.png"
+              example:
+                message: "This Answer deleted successfully"
+                question:
+                  _id: "674ac8b56f2d9d06e9a5b332"
+                  title: "What is the capital of France?"
+                  quizId: "674ac82b6f2d9d06e9a5b32e"
+                  answers:
+                    - _id: "674ac9a76f2d9d06e9a5b335"
+                      text: "London"
+                      isCorrect: false
+                      picture: "uploads/answers/pic2.png"
+
+        "404":
+          description: Answer or parent question not found.
+          content:
+            application/json:
+              example:
+                message: "The specified answer was not found."
+
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              example:
+                message: "Internal server error occurred while deleting the answer."
 
 
 components:

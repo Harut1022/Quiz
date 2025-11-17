@@ -11,7 +11,6 @@ class UserController {
     //կիսատ է 
     async getProfile(req, res) {
         const { id } = req.user
-
         const user = await User.findById(id).select("-password")
 
         if(!user) return res.status(404).send({message:"User not a found"})
