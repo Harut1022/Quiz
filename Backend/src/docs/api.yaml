@@ -396,7 +396,89 @@ paths:
 
 # Member 
 
-  /quizzes/{id}/quotes:
+  /pass:
+    get:
+      summary: Get all attempts for the authenticated user
+      description: Returns all quiz attempts created by the currently authenticated user.
+      tags: [Member]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All attempts retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: All attempts retrieved successfully.
+                  Attempts:               # ← մեծատառով, ինչպես քո response-ում է
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Attempt'
+              example:
+                message: "All attempts retrieved successfully."
+                Attempts:
+                  - _id: "691efa2e136548557de0728c"
+                    userId: "68f9db1073d0652790fac52d"
+                    quizId: "6903206815f4c2514d33d5eb"
+                    selectedAnswers:
+                      - questionId: "6919b254c0a054a55f4c9f27"
+                        answerIds: ["691ef86a136548557de0722e"]
+                      - questionId: "6919b23dc0a054a55f4c9f11"
+                        answerIds: ["691cd65a519586e964447c52"]
+                      - questionId: "6919b1d2c0a054a55f4c9e6c"
+                        answerIds: ["691ef7ac136548557de07216"]
+                      - questionId: "6919b261c0a054a55f4c9f32"
+                        answerIds: ["691ef881136548557de0723c"]
+                    correctAnswers:
+                      - questionId: "691ef9b0136548557de07243"
+                        answerIds:
+                          - "691ef9f3136548557de0725a"
+                          - "691ef9f6136548557de07261"
+                          - "691ef9fa136548557de0726a"
+                      - questionId: "6919b254c0a054a55f4c9f27"
+                        answerIds: ["691ef860136548557de07227"]
+                      - questionId: "6919b23dc0a054a55f4c9f11"
+                        answerIds: ["691cd65a519586e964447c52"]
+                      - questionId: "6919b1d2c0a054a55f4c9e6c"
+                        answerIds: ["691ef7ac136548557de07216"]
+                      - questionId: "6919b261c0a054a55f4c9f32"
+                        answerIds: ["691ef881136548557de0723c"]
+                    score: 52
+                    isFinished: true
+                    isPassed: false
+                    startedAt: "2025-11-20T11:23:26.546Z"
+                    createdAt: "2025-11-20T11:23:26.547Z"
+                    updatedAt: "2025-11-23T08:14:34.890Z"
+                    __v: 0
+
+        '404':
+          description: No attempts found for this user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: No attempts found for this user.
+
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Internal server error.
+
+
+  /pass/quiz/{id}/quotes:
     get:
       summary: Retrieve available question count options for a quiz
       description: Returns the `questionCounts` array for a specific quiz.  
@@ -456,16 +538,19 @@ paths:
                     type: string
                     example: Internal server error. Please try again later.
 
-  /quizzes/{id}:
+  /pass/quiz/{id}:
     get:
-      summary: Retrieve a quiz with random questions
-      description: Fetches a quiz by ID and returns a random subset of its questions. The number of questions is specified in the request body.
+      summary: Start a quiz attempt
+      description: >
+        Loads a quiz with a random selection of questions based on the
+        requested question count. Initializes a new quiz attempt and returns
+        the quiz data without correct answer flags.
       tags: [Member]
       security:
-        - bearerAuth: []   # JWT authentication required
+        - bearerAuth: []    # JWT authentication required
       parameters:
-        - name: id
-          in: path
+        - in: path
+          name: id
           required: true
           description: Quiz ID
           schema:
@@ -482,11 +567,11 @@ paths:
               properties:
                 quotes:
                   type: integer
-                  description: Number of random questions to include
+                  description: Number of random questions to load for this attempt
                   example: 5
       responses:
         "200":
-          description: Quiz retrieved successfully
+          description: Quiz loaded and attempt created successfully
           content:
             application/json:
               schema:
@@ -494,46 +579,55 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Quiz retrieved successfully.
-                  quiz:
+                    example: Quiz loaded successfully. You may proceed with the attempt.
+                  attempt:
                     type: object
-                    description: Quiz object with randomly selected questions
                     properties:
                       _id:
                         type: string
-                        example: "67373f9d21f91e23b2a5f1ad"
-                      title:
-                        type: string
-                        example: "JavaScript Fundamentals"
-                      questions:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            _id:
-                              type: string
-                              example: "67373f9d21f91e23b2a5f1bd"
-                            text:
-                              type: string
-                              example: "What is a closure in JavaScript?"
-                            picture:
-                              type: string
-                              example: "public/uploads/questions/1731594223451example.png"
+                        description: Attempt ID
+                        example: "67501c4422baf1b3d1ef59ab"
+                      quiz:
+                        type: object
+                        description: Quiz object with randomized questions (without isCorrect)
+                        properties:
+                          _id:
+                            type: string
+                            example: "67373f9d21f91e23b2a5f1ad"
+                          title:
+                            type: string
+                            example: "JavaScript Basics Quiz"
+                          questionCounts:
+                            type: array
+                            items: { type: integer }
+                            example: [5, 10, 15]
+                          questions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                _id:
+                                  type: string
+                                  example: "67373f9d21f91e23b2a5f1bd"
+                                text:
+                                  type: string
+                                  example: "What is a closure in JavaScript?"
+                                answers:
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      _id:
+                                        type: string
+                                        example: "67373f9d21f91e23b2a5f200"
+                                      text:
+                                        type: string
+                                        example: "A function with preserved scope"
+                                      picture:
+                                        type: string
+                                        example: "public/uploads/quizzes/1731600110_example.png"
         "400":
-          description: Invalid input or ID format
-          content:
-            application/json:
-              examples:
-                invalidId:
-                  summary: Invalid quiz ID format
-                  value:
-                    message: Invalid quiz ID format.
-                invalidQuotes:
-                  summary: Invalid question count value
-                  value:
-                    message: Invalid question count value.
-        "404":
-          description: Quiz not found
+          description: Invalid input data (wrong question count)
           content:
             application/json:
               schema:
@@ -541,7 +635,17 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Quiz not found.
+                    example: Invalid question count value.
+        "404":
+          description: Quiz not found or quiz has no available questions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Quiz not found or no questions available.
         "500":
           description: Internal server error
           content:
@@ -552,6 +656,7 @@ paths:
                   message:
                     type: string
                     example: Internal server error. Please try again later.
+
 
 
 

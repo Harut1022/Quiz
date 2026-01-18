@@ -3,7 +3,7 @@ import { checkRole } from "../middlewares/checkRole.js"
 
 import { isAuthenticated } from "../middlewares/isAuthenticated.js"
 import question from "../controllers/question.js"
-import { checkQuizExists } from "../middlewares/checkQuizExists.js"
+import middlewareQuiz from "../middlewares/Quiz.js"
 import { upload } from "../helpers/upload.js"
 import answer from "../middlewares/Answer.js"
 
@@ -13,7 +13,7 @@ questionRouter.use(checkRole("creator","admin"))
 
 
 questionRouter.post("/add/:id", 
-    checkQuizExists,
+    middlewareQuiz.checkQuizExists,
     upload.single("image"),
     question.addQuestion)
 questionRouter.patch("/edit/:id",upload.single("image"),question.editQuestion)

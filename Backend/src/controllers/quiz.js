@@ -15,8 +15,11 @@ class QuizController {
             let { isShuffle, passingPercent, hashtags, questions, isPublished, difficulty, questionCounts } = req.body
             let image = req?.file?.filename ? req.file.destination + req.file.filename : ""
             let authorId = req.user._id
-            //ստեղծենք quiz-ի օբյեկտը որ ուղարկենք DB 
 
+            //փոխենք թվային զանգված ապահովության համար։
+            questionCounts = questionCounts.map(elm => +elm)
+
+            //ստեղծենք quiz-ի օբյեկտը որ ուղարկենք DB 
             const quiz = {
                 title, description, category,
                 isShuffle, passingPercent, authorId,

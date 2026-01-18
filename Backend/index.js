@@ -6,14 +6,17 @@ import { connectDb, disconnectDb } from './src/config/db.js'
 import { setupSwagger } from './src/helpers/swagger.js';
 import { questionRouter } from './src/routes/question.js'
 import { passRouter } from './src/routes/pass.js'
-
+import cors from 'cors'
 
 const app = express()
 setupSwagger(app);
 app.use(express.urlencoded())
 app.use(express.json())
 
-
+app.use(cors({
+  credentials:true,
+  origin:["http://localhost:5173"]
+}))
 app.use("/",userRouter)
 app.use("/quiz/question",questionRouter)
 app.use("/quiz",quizRouter)
